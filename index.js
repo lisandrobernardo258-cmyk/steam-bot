@@ -31,7 +31,6 @@ const commands = [
     { name: 'game', description: 'Récupère le .lua pour un jeu', options: [{ name: 'appid', description: 'AppID Steam du jeu', type: 3, required: true }] },
     { name: 'search', description: 'Recherche des jeux par nom', options: [{ name: 'nom', description: 'Nom du jeu', type: 3, required: true }] },
     { name: 'fix', description: 'Cherche un fix online' },
-    { name: 'dl', description: 'Lien de téléchargement de SteamTools' },
     { name: 'tuto', description: 'Tutoriel complet pour utiliser SteamTools' },
     { 
         name: 'addfix', 
@@ -66,19 +65,23 @@ client.on('interactionCreate', async interaction => {
 
             let gameName = "Jeu Steam";
             let size = "Inconnue";
-            let price = "Inconnu";
+            let price = "Prix non disponible";
 
             try {
                 const storeRes = await axios.get(`https://store.steampowered.com/api/appdetails?appids=${appid}`);
                 if (storeRes.data?.[appid]?.success) {
                     const data = storeRes.data[appid].data;
                     gameName = data.name;
+                    
                     if (data.pc_requirements?.minimum) {
                         const match = data.pc_requirements.minimum.match(/Storage:\s*([\d,]+)\s*GB/i);
                         if (match) size = match[1] + " GB";
                     }
+                    
                     if (data.price_overview) {
                         price = data.price_overview.final_formatted || (data.price_overview.final / 100) + " €";
+                    } else if (data.is_free) {
+                        price = "Gratuit";
                     }
                 }
             } catch (e) {}
@@ -119,7 +122,7 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // ====================== /SEARCH ======================
+        // Les autres commandes restent les mêmes...
         if (interaction.commandName === 'search') {
             const query = interaction.options.getString('nom').trim();
             await interaction.deferReply();
@@ -135,14 +138,13 @@ client.on('interactionCreate', async interaction => {
                         .setFooter({ text: "Utilise /game <AppID>" });
                     await interaction.editReply({ embeds: [embed] });
                 } else {
-                    await interaction.editReply({ content: `❌ Aucun résultat pour "${query}"` });
+                    await interaction.editReply({ content: `❌ Aucun résultat.` });
                 }
             } catch {
                 await interaction.editReply({ content: "❌ Erreur de recherche." });
             }
         }
 
-        // ====================== /FIX ======================
         if (interaction.commandName === 'fix') {
             const embed = new EmbedBuilder()
                 .setColor(0xff9900)
@@ -163,7 +165,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed], components: [row] });
         }
 
-        // ====================== /TUTO ======================
         if (interaction.commandName === 'tuto') {
             const embed = new EmbedBuilder()
                 .setColor(0x00ff88)
@@ -187,25 +188,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed], components: [row] });
         }
 
-        // ====================== /DL ======================
-        if (interaction.commandName === 'dl') {
-            const embed = new EmbedBuilder()
-                .setColor(0x0099ff)
-                .setTitle("📥 SteamTools")
-                .setDescription("Télécharge la dernière version")
-                .addFields({ name: "Lien", value: "[https://steamtools.net/download](https://steamtools.net/download)" });
-
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setLabel("Télécharger")
-                    .setStyle(ButtonStyle.Link)
-                    .setURL("https://steamtools.net/download")
-            );
-
-            await interaction.reply({ embeds: [embed], components: [row] });
-        }
-
-        // ====================== /ADDFIX ======================
         if (interaction.commandName === 'addfix') {
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
                 return interaction.reply({ content: "❌ Réservé aux modérateurs.", ephemeral: true });
@@ -215,7 +197,7 @@ client.on('interactionCreate', async interaction => {
             const note = interaction.options.getString('note') || 'Aucune';
 
             db.prepare('INSERT OR REPLACE INTO online_fix (appid, name, note) VALUES (?, ?, ?)').run(appid, nom, note);
-            await interaction.reply({ content: `✅ ${nom} ajouté avec fix.`, ephemeral: true });
+            await interaction.reply({ content: `✅ ${nom} ajouté avec fix online.`, ephemeral: true });
         }
 
     } catch (error) {
