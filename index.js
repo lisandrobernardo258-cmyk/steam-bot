@@ -64,8 +64,8 @@ client.on('interactionCreate', async interaction => {
             await interaction.deferReply();
 
             let gameName = "Jeu Steam";
-            let size = "Inconnue";
             let price = "Prix non disponible";
+            let genre = "Non disponible";
 
             try {
                 const storeRes = await axios.get(`https://store.steampowered.com/api/appdetails?appids=${appid}`);
@@ -73,15 +73,15 @@ client.on('interactionCreate', async interaction => {
                     const data = storeRes.data[appid].data;
                     gameName = data.name;
                     
-                    if (data.pc_requirements?.minimum) {
-                        const match = data.pc_requirements.minimum.match(/Storage:\s*([\d,]+)\s*GB/i);
-                        if (match) size = match[1] + " GB";
-                    }
-                    
                     if (data.price_overview) {
                         price = data.price_overview.final_formatted || (data.price_overview.final / 100) + " €";
                     } else if (data.is_free) {
                         price = "Gratuit";
+                    }
+
+                    // Genre du jeu
+                    if (data.genres && data.genres.length > 0) {
+                        genre = data.genres.map(g => g.description).join(", ");
                     }
                 }
             } catch (e) {}
@@ -93,8 +93,8 @@ client.on('interactionCreate', async interaction => {
                 .setTitle(`🎮 ${gameName}`)
                 .setDescription(`**AppID :** \`${appid}\``)
                 .addFields(
-                    { name: "📦 Taille", value: size, inline: true },
                     { name: "💰 Prix", value: price, inline: true },
+                    { name: "🎮 Genre", value: genre, inline: true },
                     { name: "📋 Instructions", value: "1. Clique sur Générer le .lua\n2. Colle l'AppID\n3. Télécharge ton fichier" },
                     { name: "🔗 Générateurs .lua", value: "1. ManifestHub\n2. Fares.top" },
                     { name: "⚠️ Attention", value: "Si le jeu est trop récent, utilise Fares.top." }
@@ -122,7 +122,7 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // Les autres commandes restent les mêmes...
+        // ====================== /SEARCH ======================
         if (interaction.commandName === 'search') {
             const query = interaction.options.getString('nom').trim();
             await interaction.deferReply();
@@ -145,6 +145,7 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
+        // ====================== /FIX ======================
         if (interaction.commandName === 'fix') {
             const embed = new EmbedBuilder()
                 .setColor(0xff9900)
@@ -165,6 +166,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed], components: [row] });
         }
 
+        // ====================== /TUTO ======================
         if (interaction.commandName === 'tuto') {
             const embed = new EmbedBuilder()
                 .setColor(0x00ff88)
@@ -188,6 +190,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed], components: [row] });
         }
 
+        // ====================== /ADDFIX ======================
         if (interaction.commandName === 'addfix') {
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
                 return interaction.reply({ content: "❌ Réservé aux modérateurs.", ephemeral: true });
